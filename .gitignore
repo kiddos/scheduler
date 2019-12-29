@@ -1,0 +1,14 @@
+*.sqlite3
+*.pyc
+
+*.xlsx
+*.xls
+*.docx
+*.xlsx#
+*.docx#
+*.csv#
+*.csv
+
+*.json
+
+scheduler_ui.py
