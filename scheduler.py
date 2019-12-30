@@ -414,9 +414,7 @@ class RequestModel(QAbstractTableModel):
     self.current_date = current_date
     self.first_day, self.days_in_month = monthrange(current_date.year,
                                                     current_date.month)
-    self.beginResetModel()
     self.load_data()
-    self.endResetModel()
 
   def load_data(self):
     """
@@ -426,6 +424,10 @@ class RequestModel(QAbstractTableModel):
     name1 | limit1 | preference1 | preference2 | .... |  total days off |
     name2 | limit2 | preference1 | preference2 | .... |  total days off |
     """
+
+    self.beginResetModel()
+    cursor.execute("""SELECT * FROM staffs;""")
+    staffs = cursor.fetchall()
 
     cursor.execute("""SELECT * FROM leaders;""")
     leaders = cursor.fetchall()
@@ -441,6 +443,19 @@ class RequestModel(QAbstractTableModel):
       for l in leaders:
         if l[2] == self.model_data[4][0]:
           self.leader = l
+
+      # refresh staffs
+      staff_model_data = []
+      for staff in staffs:
+        found = False
+        for s in range(5, len(self.model_data)):
+          if self.model_data[s][0][2] == staff[2]:
+            staff_model_data.append(self.model_data[s])
+            found = True
+        if not found:
+          staff_model_data.append([staff, ''] + ['' for _ in range(self.days_in_month)] + [0])
+
+      self.model_data = self.model_data[:5] + staff_model_data
     else:
       self.model_data = []
 
@@ -463,7 +478,6 @@ class RequestModel(QAbstractTableModel):
       self.model_data.append(row_data)
 
       # insert leader
-
       self.leader = None
       if len(leaders) > 0:
         self.leader = leaders[0]
@@ -473,17 +487,13 @@ class RequestModel(QAbstractTableModel):
       self.model_data.append(row_data)
 
       # insert staff
-      cursor.execute("""SELECT * FROM staffs;""")
-      staffs = cursor.fetchall()
-
       for staff in staffs:
         row_data = [staff, ''] + ['' for _ in range(self.days_in_month)] + [0]
         self.model_data.append(row_data)
 
-      #  print(self.model_data)
-
       self.save()
     self.update_states()
+    self.endResetModel()
 
   def update_states(self):
     """
@@ -526,6 +536,7 @@ class RequestModel(QAbstractTableModel):
     - if leader has evening shift, day shift should also have addition staff
       but evening shift require 1 less staff
     """
+
     if self.model_data[4][day] in unavailable and not self.model_data[0][day]:
       self.model_data[2][day] = day_shift_count + 1
     elif self.model_data[4][day] == evening_shift:
