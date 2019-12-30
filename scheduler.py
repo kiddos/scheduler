@@ -491,7 +491,7 @@ class RequestModel(QAbstractTableModel):
         row_data = [staff, ''] + ['' for _ in range(self.days_in_month)] + [0]
         self.model_data.append(row_data)
 
-      self.save()
+    self.save()
     self.update_states()
     self.endResetModel()
 
@@ -819,9 +819,7 @@ class ScheduleModel(QAbstractTableModel):
     self.current_date = current_date
     self.first_day, self.days_in_month = monthrange(current_date.year,
                                                     current_date.month)
-    self.beginResetModel()
     self.load_data()
-    self.endResetModel()
 
   def load_staffs(self):
     cursor.execute("""SELECT * FROM staffs;""")
@@ -844,6 +842,7 @@ class ScheduleModel(QAbstractTableModel):
     else copy the preference as current model data
     """
 
+    self.beginResetModel()
     self.load_staffs()
     self.load_request()
 
@@ -854,6 +853,24 @@ class ScheduleModel(QAbstractTableModel):
     if len(data) > 0:
       self.schedule_data = json.loads(data[0][3])
 
+      # copy leader's shift
+      for day in range(2, self.days_in_month+2):
+        if self.preference_data[4][day]:
+          self.schedule_data[4][day] = self.preference_data[4][day]
+
+      # refresh staff members
+      staff_model_data = []
+      for staff in self.staffs:
+        found = False
+        for s in range(5, len(self.schedule_data)):
+          if self.schedule_data[s][0][2] == staff[2]:
+            staff_model_data.append(self.schedule_data[s])
+            found = True
+        if not found:
+          staff_model_data.append([staff, ''] + ['' for _ in range(self.days_in_month)] + [0])
+
+      self.schedule_data = self.schedule_data[:5] + staff_model_data
+
       # copy the staff requirment and staff required shift type
       for i in range(4):
         for j in range(2, self.columnCount(0)):
@@ -861,11 +878,6 @@ class ScheduleModel(QAbstractTableModel):
 
       for i in range(5, len(self.schedule_data)):
         self.schedule_data[i][1] = self.preference_data[i][1]
-
-      # copy leader's shift
-      for day in range(2, self.days_in_month+2):
-        if self.preference_data[4][day]:
-          self.schedule_data[4][day] = self.preference_data[4][day]
     else:
       # direct copy from preference data
       self.schedule_data = []
@@ -874,6 +886,7 @@ class ScheduleModel(QAbstractTableModel):
         self.schedule_data.append(r)
 
     self.highlight()
+    self.endResetModel()
 
   def save(self):
     try:
@@ -897,6 +910,10 @@ class ScheduleModel(QAbstractTableModel):
       self.status_message_signal.emit(str(e))
 
   def load_previous_month_data(self):
+    """
+    load the schedule for last month for optimization
+    """
+
     first = datetime(year=self.current_date.year,
                      month=self.current_date.month,
                      day=1)
@@ -1137,6 +1154,7 @@ class ScheduleModel(QAbstractTableModel):
     compute the number of days off for each staff
     and fill in the empty cell as day shift for leader row
     """
+
     # update days off
     for s in range(5, len(self.schedule_data)):
       num_days_off = 0
@@ -1488,6 +1506,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.show_error('Invalid Staff ID')
       else:
         self.staff_model.add_staff(staff_id, name, preference_index)
+        self.request_model.load_data()
+        self.schedule_model.load_data()
 
         # reset inputs
         self.staff_id_lineedit.setText('')
@@ -1526,8 +1546,14 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
     if len(selection) > 0:
       row_text = ','.join(rows)
-      self.confirmation(row_text,
-                        lambda: self.staff_model.delete_staff(selection))
+
+      def callback():
+        self.staff_model.delete_staff(selection)
+        self.request_model.load_data()
+        self.schedule_model.load_data()
+
+
+      self.confirmation(row_text, callback)
 
   def add_leader(self):
     leader_id = self.leader_id_lineedit.text().strip()
