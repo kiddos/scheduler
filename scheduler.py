@@ -862,6 +862,7 @@ class ScheduleModel(QAbstractTableModel):
           self.schedule_data[4][day] = self.preference_data[4][day]
         else:
           self.schedule_data[4][day] = day_shift
+      self.schedule_data[4][0] = self.preference_data[4][0]
 
       # refresh staff members
       staff_model_data = []
