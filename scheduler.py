@@ -440,9 +440,12 @@ class RequestModel(QAbstractTableModel):
       self.model_data = json.loads(data[0][0])
 
       # find leader
-      for l in leaders:
-        if l[2] == self.model_data[4][0]:
-          self.leader = l
+      self.leader = [0, 0, 'Unknown']
+      if len(leaders) > 0:
+        self.model_data[4][0] = leaders[-1]
+        self.leader = leaders[-1]
+      else:
+        self.model_data[4][0] = self.leader
 
       # refresh staffs
       staff_model_data = []
@@ -483,7 +486,7 @@ class RequestModel(QAbstractTableModel):
         self.leader = leaders[0]
         row_data = [self.leader, ''] + ['' for _ in range(self.days_in_month)] + [0]
       else:
-        row_data = ['Unknown', ''] + ['' for _ in range(self.days_in_month)] + [0]
+        row_data = [[0, 0, 'Unknown'], ''] + ['' for _ in range(self.days_in_month)] + [0]
       self.model_data.append(row_data)
 
       # insert staff
@@ -857,6 +860,8 @@ class ScheduleModel(QAbstractTableModel):
       for day in range(2, self.days_in_month+2):
         if self.preference_data[4][day]:
           self.schedule_data[4][day] = self.preference_data[4][day]
+        else:
+          self.schedule_data[4][day] = day_shift
 
       # refresh staff members
       staff_model_data = []
@@ -1366,12 +1371,9 @@ class ScheduleModel(QAbstractTableModel):
   def setData(self, index, value, role):
     if role == Qt.EditRole:
       if isinstance(value, str):
-        self.schedule[index.row()][index.column()] = value.upper()
+        self.schedule_data[index.row()][index.column()] = value.upper()
       else:
-        self.schedule[index.row()][index.column()] = value
-
-      # redo validation
-      self.validate()
+        self.schedule_data[index.row()][index.column()] = value
 
       self.save()
       return True
