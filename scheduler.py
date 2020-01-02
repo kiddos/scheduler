@@ -453,7 +453,7 @@ class RequestModel(QAbstractTableModel):
         found = False
         for s in range(5, len(self.model_data)):
           if self.model_data[s][0][2] == staff[2]:
-            staff_model_data.append(self.model_data[s])
+            staff_model_data.append([staff] + self.model_data[s][1:])
             found = True
         if not found:
           staff_model_data.append([staff, ''] + ['' for _ in range(self.days_in_month)] + [0])
@@ -870,7 +870,7 @@ class ScheduleModel(QAbstractTableModel):
         found = False
         for s in range(5, len(self.schedule_data)):
           if self.schedule_data[s][0][2] == staff[2]:
-            staff_model_data.append(self.schedule_data[s])
+            staff_model_data.append([staff] + self.schedule_data[s][1:])
             found = True
         if not found:
           staff_model_data.append([staff, ''] + ['' for _ in range(self.days_in_month)] + [0])
